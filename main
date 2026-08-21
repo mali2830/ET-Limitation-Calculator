@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ET Limitation Engine — demonstrator</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:wght@400;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{--ink:#14181F;--paper:#EDEFF1;--surface:#fff;--rule:#D3D8DC;--muted:#5C6670;--live:#1D6B58;--expired:#9E2B25;--brass:#B08A1E;--brass-tint:#F5EDD4;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Inter',system-ui,-apple-system,sans-serif;padding:28px 20px 64px}
+.wrap{max-width:1080px;margin:0 auto}
+.eyebrow{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:'Newsreader',Georgia,serif;font-size:clamp(28px,5vw,44px);line-height:1.05;font-weight:600;margin:10px 0 8px;letter-spacing:-.015em}
+h1 em{font-style:italic;font-weight:400}
+.sub{font-size:14.5px;line-height:1.6;color:var(--muted);max-width:62ch}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:3px;padding:20px;margin-top:22px}
+.legend{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+label{display:block;font-size:12px;font-weight:500;margin-bottom:5px}
+input[type=date],select{width:100%;padding:8px 9px;border:1px solid var(--rule);border-radius:2px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;background:#fff;color:var(--ink)}
+.hint{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px}
+.chip{border:1px solid var(--rule);background:#fff;border-radius:2px;padding:7px 11px;font-size:12.5px;cursor:pointer;color:var(--muted);font-family:inherit}
+.chip[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:#fff}
+.ruler{position:relative;height:152px;margin:22px 0 6px;border-bottom:1px solid var(--ink)}
+.band{position:absolute;top:20px;height:20px;background:var(--brass-tint);border-left:1px solid var(--brass);border-right:1px solid var(--brass)}
+.bandlab{position:absolute;top:0;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--brass);letter-spacing:.06em;white-space:nowrap}
+.tick{position:absolute;bottom:0;width:1px;height:36px;background:var(--ink)}
+.tick.ghost{background:var(--rule)}
+.ticklab{position:absolute;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;white-space:nowrap;line-height:1.35}
+.ticklab.r0{top:48px}.ticklab.r1{top:84px}
+.ticklab.mid{transform:translateX(-50%);text-align:center}
+.ticklab.first{transform:translateX(0);text-align:left}
+.ticklab.last{transform:translateX(-100%);text-align:right}
+.ticklab.ghost{color:var(--muted)}
+.ticklab b{display:block;font-weight:500;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.shift{position:absolute;bottom:36px;height:1px;border-top:1px dashed var(--muted)}
+.shiftlab{position:absolute;bottom:40px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;color:var(--muted);white-space:nowrap;transform:translateX(-50%)}
+.result{border-top:1px solid var(--rule);padding:16px 0}
+.result:first-child{border-top:none}
+.rtop{display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap}
+.cname{font-family:'Newsreader',Georgia,serif;font-size:19px;font-weight:600}
+.src{font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',ui-monospace,monospace;margin-top:2px}
+.date{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:17px;font-weight:500;text-align:right}
+.status{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;text-align:right;margin-top:2px}
+.in{color:var(--live)}.out{color:var(--expired)}
+.ledger{margin-top:12px;border-left:2px solid var(--rule);padding-left:13px}
+.step{display:grid;grid-template-columns:1fr auto;gap:10px;font-size:12.5px;padding:3px 0;align-items:baseline}
+.step span:last-child{font-family:'IBM Plex Mono',ui-monospace,monospace;color:var(--muted);white-space:nowrap}
+.step.applied span:last-child{color:var(--ink);font-weight:500}
+.cite{font-size:11px;color:var(--muted);font-style:italic}
+.flag{margin-top:10px;background:var(--brass-tint);border-left:2px solid var(--brass);padding:9px 11px;font-size:12.5px;line-height:1.5}
+.flag.red{background:#F7E9E8;border-left-color:var(--expired)}
+.foot{margin-top:26px;font-size:11.5px;color:var(--muted);line-height:1.6;max-width:76ch}
+@media(max-width:560px){.ruler{height:172px}.ticklab{font-size:9px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Limitation engine · v1 · England &amp; Wales</div>
+  <h1>Time limits are the one thing<br><em>an AI must never get nearly right.</em></h1>
+  <p class="sub">A missed limitation date cannot be corrected later. So the model never touches the arithmetic here — in the full version it identifies claims from a narrative, and every date below is derived in code from a stated rule you can read.</p>
+
+  <div class="card">
+    <div class="legend"><span>Step 1 · Confirm claims and key dates</span><span>Deterministic throughout</span></div>
+    <div class="chips" id="chips"></div>
+    <div class="grid">
+      <div><label for="edt">Effective date of termination</label><input type="date" id="edt"><div class="hint">Unfair, constructive and wrongful dismissal.</div></div>
+      <div><label for="start">Start of employment</label><input type="date" id="start"><div class="hint">Qualifying service gate only.</div></div>
+      <div><label for="wages">Last deduction in the series</label><input type="date" id="wages"><div class="hint">Not the first. See s.23(3) flag.</div></div>
+      <div><label for="holiday">Date holiday pay fell due</label><input type="date" id="holiday"><div class="hint">When payment should have been made.</div></div>
+      <div><label for="mode">Acas position</label><select id="mode"><option value="projected">Not yet notified — project it</option><option value="known">Already notified — dates known</option></select><div class="hint">Day B cannot be known in advance.</div></div>
+      <div id="acasFields"></div>
+      <div><label for="regime">Six-month regime (ERA 2025)</label><select id="regime"><option value="auto">Transitional rule — 6 months from 1 Oct 2026</option><option value="force3">Override — 3 months for everything</option></select><div class="hint">Regulations approved; Sch.12 commencement pending.</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="rulerCard" style="display:none">
+    <div class="legend"><span>Step 2 · The clock</span><span id="rulerFor"></span></div>
+    <div class="ruler" id="ruler"></div>
+  </div>
+
+  <div class="card">
+    <div class="legend"><span>Step 3 · Calculation</span><span>Every line auditable</span></div>
+    <div id="results"></div>
+  </div>
+
+  <div class="card">
+    <div class="legend"><span>Step 4 · Engine tests</span><span>Expected values verified by hand</span></div>
+    <div id="tests"></div>
+    <p class="hint" style="margin-top:12px">Ten cases covering month-end clamping, both Acas limbs, the six-month regime and each defect found in testing. Expected values were worked out by hand first, then checked against the engine.</p>
+  </div>
+
+  <div class="card">
+    <div class="legend"><span>Authorities relied on</span><span>Check before advising</span></div>
+    <div class="step"><span><b>HMRC v Garau</b> UKEAT/0348/16 — only the first certificate counts; EC before time runs gives no extension</span><span>EC scope</span></div>
+    <div class="step"><span><b>Smith v The Restaurant Group (UK) Ltd</b> [2024] EAT 168 — s.207B(3) discounts only EC days falling after the EDT</span><span>s.207B(3)</span></div>
+    <div class="step"><span><b>Luton BC v Haque</b> EAT/0180/17 — sequencing of the s.207B(3) and (4) limbs</span><span>s.207B(4)</span></div>
+    <div class="step"><span><b>Compass Group v Morgan</b> [2017] ICR 73 — a certificate can cover events post-dating it, same matter</span><span>validity</span></div>
+    <div class="step"><span><b>Chief Constable of PSNI v Agnew</b> [2023] UKSC 33 — a gap does not automatically break a series</span><span>s.23(3)</span></div>
+  </div>
+
+  <p class="foot">Demonstrator only — not legal advice, and not to be relied on. Acas early conciliation runs up to twelve weeks for notifications made on or after 1 December 2025. A claim is presented when the tribunal receives it, not when it is sent. Automatically unfair dismissals need no qualifying service and are not modelled. Discrimination is out of scope: just-and-equitable and continuing acts need their own treatment rather than a shared code path.</p>
+</div>
+
+<script>
+"use strict";
+var parse=function(s){return s?new Date(s+"T00:00:00"):null;};
+var addDays=function(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x;};
+var addMonths=function(d,n){var x=new Date(d),day=x.getDate();x.setDate(1);x.setMonth(x.getMonth()+n);
+  var last=new Date(x.getFullYear(),x.getMonth()+1,0).getDate();x.setDate(Math.min(day,last));return x;};
+var diffDays=function(a,b){return Math.round((b-a)/86400000);};
+var later=function(){var d=[].slice.call(arguments).filter(Boolean);return d.length?d.sort(function(a,b){return b-a;})[0]:null;};
+var fmt=function(d){return d?d.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):"—";};
+var iso=function(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
+var monthsBetween=function(a,b){var m=(b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth());if(b.getDate()<a.getDate())m-=1;return m;};
+var esc=function(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");};
+
+/* core calculation — pure and testable */
+function calc(trig,months,A,B){
+  var base=addDays(addMonths(trig,months),-1);
+  var stopped=null,floor=null,limb="primary",ecWarn=null,effA=null;
+  if(A&&B){
+    if(B<A){ecWarn="order";}
+    else if(A>base){ecWarn="late";}
+    else if(B<=trig){ecWarn="before";}
+    else{
+      effA=A<trig?trig:A;
+      if(A<trig)ecWarn="partial";
+      stopped=addDays(base,diffDays(effA,B));
+      var w=addMonths(B,1);
+      if(base>=effA&&base<=w)floor=w;
+    }
+  }
+  var final=later(base,stopped,floor);
+  if(floor&&+final===+floor)limb="s.207B(4)";
+  else if(stopped&&+final===+stopped&&+stopped!==+base)limb="s.207B(3)";
+  return{base:base,stopped:stopped,floor:floor,final:final,limb:limb,ecWarn:ecWarn,effA:effA};
+}
+
+var TESTS=[
+ {n:"Plain 3-month limit",t:"2026-01-15",m:3,exp:"2026-04-14",limb:"primary"},
+ {n:"Month-end clamping (31 Jan)",t:"2026-01-31",m:3,exp:"2026-04-29",limb:"primary"},
+ {n:"Month-end clamping (30 Nov)",t:"2026-11-30",m:3,exp:"2027-02-27",limb:"primary"},
+ {n:"Six-month regime",t:"2026-11-10",m:6,exp:"2027-05-09",limb:"primary"},
+ {n:"Acas stop-clock, s.207B(3)",t:"2026-01-15",m:3,a:"2026-02-01",b:"2026-03-01",exp:"2026-05-12",limb:"s.207B(3)"},
+ {n:"One-month floor, s.207B(4)",t:"2026-01-15",m:3,a:"2026-04-10",b:"2026-04-12",exp:"2026-05-12",limb:"s.207B(4)"},
+ {n:"EC started after expiry — no extension",t:"2026-01-15",m:3,a:"2026-06-01",b:"2026-06-05",exp:"2026-04-14",limb:"primary"},
+ {n:"EC wholly before time ran — Garau",t:"2026-01-15",m:3,a:"2025-01-01",b:"2025-02-01",exp:"2026-04-14",limb:"primary"},
+ {n:"EC straddles trigger — part counts (Smith)",t:"2026-01-15",m:3,a:"2026-01-01",b:"2026-02-01",exp:"2026-05-01",limb:"s.207B(3)"},
+ {n:"Day B before day A — ignored",t:"2026-01-15",m:3,a:"2026-03-01",b:"2026-02-01",exp:"2026-04-14",limb:"primary"}
+];
+
+var CLAIMS=[
+ {id:"ud",name:"Unfair dismissal",src:"ERA 1996 s.94 · limitation s.111(2)",trigger:"edt"},
+ {id:"cd",name:"Constructive dismissal",src:"ERA 1996 s.95(1)(c) · limitation s.111(2)",trigger:"edt",note:"A form of dismissal, not a free-standing claim. Limitation runs from the EDT in the same way."},
+ {id:"uds",name:"Unlawful deduction from wages",src:"ERA 1996 Pt II s.13 · limitation s.23(2)",trigger:"wages"},
+ {id:"hp",name:"Holiday pay",src:"WTR 1998 reg 30(2)",trigger:"holiday"},
+ {id:"wd",name:"Wrongful dismissal",src:"Contractual · ET jurisdiction: EJO 1994 art.7",trigger:"edt",contractual:true}
+];
+
+var SWITCH=parse("2026-10-01");
+var today=new Date();today.setHours(0,0,0,0);
+var S={selected:[],edt:"",start:"",wages:"",holiday:"",mode:"projected",plannedA:"",dayA:"",dayB:"",regime:"auto"};
+
+function compute(){
+  var A=S.mode==="known"?parse(S.dayA):null, B=S.mode==="known"?parse(S.dayB):null;
+  return CLAIMS.filter(function(c){return S.selected.indexOf(c.id)>-1;}).map(function(c){
+    var trig=c.trigger==="edt"?parse(S.edt):c.trigger==="wages"?parse(S.wages):parse(S.holiday);
+    if(!trig)return{c:c,missing:true};
+    var after=trig>=SWITCH;
+    var six=S.regime!=="force3"&&after&&!c.contractual;
+    var months=six?6:3;
+    var r=calc(trig,months,A,B);
+    var remaining=diffDays(today,r.final);
+    var proj=null;
+    if(S.mode==="projected"){
+      var entered=!!parse(S.plannedA);
+      var pA=parse(S.plannedA)||today;
+      if(pA<=r.base){
+        proj={pA:pA,assumed:!entered,earliest:calc(trig,months,pA,pA).final,latest:calc(trig,months,pA,addDays(pA,84)).final,
+              notifyBy:r.base,left:diffDays(today,r.base)};
+      }else{proj={pA:pA,assumed:!entered,tooLate:true,notifyBy:r.base};}
+    }
+    return{c:c,trig:trig,months:months,r:r,remaining:remaining,inTime:remaining>=0,
+           unresolved:c.contractual&&after&&S.regime!=="force3",proj:proj};
+  });
+}
+
+function renderChips(){
+  document.getElementById("chips").innerHTML=CLAIMS.map(function(c){
+    return '<button class="chip" aria-pressed="'+(S.selected.indexOf(c.id)>-1)+'" data-id="'+c.id+'">'+esc(c.name)+'</button>';
+  }).join("");
+}
+
+function renderAcas(){
+  var el=document.getElementById("acasFields");
+  if(S.mode==="projected"){
+    el.innerHTML='<label for="plannedA">Planned notification date</label><input type="date" id="plannedA" value="'+S.plannedA+'"><div class="hint">Blank assumes today — shown as an assumption, not an entry.</div>';
+  }else{
+    el.innerHTML='<label for="dayA">Acas day A</label><input type="date" id="dayA" value="'+S.dayA+'"><div class="hint">EC notification received by Acas.</div>'+
+      '<label for="dayB" style="margin-top:10px">Acas day B</label><input type="date" id="dayB" value="'+S.dayB+'"><div class="hint">Certificate received by the claimant.</div>';
+  }
+}
+
+function renderRuler(rows){
+  var card=document.getElementById("rulerCard"), el=document.getElementById("ruler");
+  var anchor=null;
+  for(var i=0;i<rows.length;i++){if(!rows[i].missing){anchor=rows[i];break;}}
+  if(!anchor){card.style.display="none";return;}
+  card.style.display="";
+  document.getElementById("rulerFor").textContent=anchor.c.name;
+  var p=anchor.proj&&!anchor.proj.tooLate?anchor.proj:null;
+  var A=p?p.pA:(S.mode==="known"?parse(S.dayA):null);
+  var B=p?null:(S.mode==="known"?parse(S.dayB):null);
+  var ticks;
+  if(p){ticks=[{d:anchor.trig,l:"Trigger"},{d:p.pA,l:p.assumed?"If notified today":"Notify",ghost:p.assumed},{d:p.earliest,l:"Earliest"},{d:p.latest,l:"Latest"}];}
+  else{
+    var shifted=+anchor.r.base!==+anchor.r.final;
+    ticks=[{d:anchor.trig,l:"Trigger"}];
+    if(A)ticks.push({d:A,l:"Day A"});
+    if(B)ticks.push({d:B,l:"Day B"});
+    if(shifted)ticks.push({d:anchor.r.base,l:"Primary limit",ghost:true});
+    ticks.push({d:anchor.r.final,l:"Deadline"});
+    ticks.sort(function(x,y){return x.d-y.d;});
+  }
+  var pts=ticks.map(function(t){return t.d;});
+  var min=new Date(Math.min.apply(null,pts)),max=new Date(Math.max.apply(null,pts));
+  var span=Math.max(diffDays(min,max),1);
+  var pct=function(d){return (diffDays(min,d)/span)*92+4;};
+  var html="";
+  var bf=p?p.earliest:A, bt=p?p.latest:B;
+  if(bf&&bt&&bt>=bf){
+    var lab=p?"certificate window · deadline unknown":"clock stopped · "+diffDays(A,B)+" days";
+    html+='<div class="band" style="left:'+pct(bf)+'%;width:'+Math.max(pct(bt)-pct(bf),0.4)+'%"></div>'+
+          '<div class="bandlab" style="left:'+pct(bf)+'%;'+(pct(bf)>55?"transform:translateX(-100%)":"")+'">'+lab+'</div>';
+  }
+  if(!p&&+anchor.r.base!==+anchor.r.final){
+    html+='<div class="shift" style="left:'+pct(anchor.r.base)+'%;width:'+Math.max(pct(anchor.r.final)-pct(anchor.r.base),0.4)+'%"></div>'+
+          '<div class="shiftlab" style="left:'+((pct(anchor.r.base)+pct(anchor.r.final))/2)+'%">+'+diffDays(anchor.r.base,anchor.r.final)+' days</div>';
+  }
+  ticks.forEach(function(t,i){
+    var edge=i===0?"first":(i===ticks.length-1?"last":"mid");
+    html+='<div class="tick'+(t.ghost?" ghost":"")+'" style="left:'+pct(t.d)+'%"></div>'+
+          '<div class="ticklab r'+(i%2)+' '+edge+(t.ghost?" ghost":"")+'" style="left:'+pct(t.d)+'%"><b>'+t.l+'</b>'+fmt(t.d)+'</div>';
+  });
+  el.innerHTML=html;
+}
+
+function renderResults(rows){
+  var el=document.getElementById("results");
+  if(!rows.length){el.innerHTML='<p class="sub">Select at least one claim type above.</p>';return;}
+  el.innerHTML=rows.map(function(x){
+    var c=x.c;
+    if(x.missing){
+      return '<div class="result"><div class="rtop"><div><div class="cname">'+esc(c.name)+'</div><div class="src">'+esc(c.src)+'</div></div>'+
+             '<div><div class="date">—</div><div class="status">date needed</div></div></div></div>';
+    }
+    var r=x.r,h="";
+    h+='<div class="result"><div class="rtop"><div><div class="cname">'+esc(c.name)+'</div><div class="src">'+esc(c.src)+'</div></div>'+
+       '<div><div class="date">'+fmt(r.final)+'</div><div class="status '+(x.inTime?"in":"out")+'">'+
+       (x.inTime?x.remaining+" days remaining":"out of time by "+Math.abs(x.remaining)+" days")+'</div></div></div>';
+    h+='<div class="ledger">';
+    h+='<div class="step"><span>Trigger date</span><span>'+fmt(x.trig)+'</span></div>';
+    h+='<div class="step'+(r.limb==="primary"?" applied":"")+'"><span>'+x.months+' months less one day <span class="cite">— primary limit</span></span><span>'+fmt(r.base)+'</span></div>';
+    if(r.stopped)h+='<div class="step'+(r.limb==="s.207B(3)"?" applied":"")+'"><span>Acas period not counted <span class="cite">— ERA s.207B(3); Smith [2024] EAT 168</span></span><span>'+fmt(r.stopped)+'</span></div>';
+    if(r.floor)h+='<div class="step'+(r.limb==="s.207B(4)"?" applied":"")+'"><span>One month from day B <span class="cite">— ERA s.207B(4); Luton BC v Haque</span></span><span>'+fmt(r.floor)+'</span></div>';
+    h+='<div class="step applied"><span>Applied</span><span>'+r.limb+'</span></div></div>';
+
+    if(c.note)h+='<div class="flag">'+c.note+'</div>';
+    if(r.ecWarn==="order")h+='<div class="flag red"><b>Acas dates ignored.</b> Day B falls before day A. Check the certificate.</div>';
+    if(r.ecWarn==="late")h+='<div class="flag red"><b>No extension applied.</b> Notification was made after the primary limit expired on '+fmt(r.base)+'. Early conciliation pauses a clock that is still running; it does not restart one that has stopped. This is an extension-of-time question.</div>';
+    if(r.ecWarn==="before")h+='<div class="flag red"><b>No extension applied.</b> The whole conciliation period fell before time began to run, so none of it is discounted — you cannot stop a clock that has not started (HMRC v Garau). The certificate may still be valid for this claim if it relates to the same matter (Compass Group v Morgan); a second certificate would add nothing to time.</div>';
+    if(r.ecWarn==="partial")h+='<div class="flag"><b>Conciliation began before time started to run.</b> Only the part of the EC period falling after '+fmt(x.trig)+' is discounted — counted from '+fmt(r.effA)+' to day B, not from day A. Smith v The Restaurant Group [2024] EAT 168; Luton BC v Haque. Discounting the whole period would overstate the deadline.</div>';
+    if(x.proj&&!x.proj.tooLate)h+='<div class="flag"><b>Projected deadline: '+fmt(x.proj.earliest)+' to '+fmt(x.proj.latest)+'.</b> '+(x.proj.assumed?'No notification date entered, so this assumes you notify today ('+fmt(x.proj.pA)+') — enter a date above to model a different one. Notifying':'Notifying Acas on '+fmt(x.proj.pA))+' stops the clock, but the certificate can issue any time up to twelve weeks later, so the deadline is a range until day B is known. Work to the earliest date. <b>Notify Acas by '+fmt(x.proj.notifyBy)+'</b> — '+x.proj.left+' days from today — or the primary limit expires and conciliation cannot rescue it.</div>';
+    if(x.proj&&x.proj.tooLate)h+='<div class="flag red"><b>'+(x.proj.assumed?"Time has already expired.":"Notification planned after the primary limit expires.")+'</b> The limit here expired on '+fmt(x.proj.notifyBy)+'. Treat this as an extension-of-time question, not a conciliation question.</div>';
+    if(c.id==="uds")h+='<div class="flag"><b>Series of deductions.</b> Time runs from the last in the series (s.23(3)); a gap of three months or more does not automatically break it — Agnew [2023] UKSC 33. Recovery capped at two years back: Deduction from Wages (Limitation) Regulations 2014.</div>';
+    if(c.id==="hp")h+='<div class="flag"><b>Consider pleading in the alternative.</b> Holiday pay sits under WTR reg 30, but the same shortfall is often better framed as a s.13 deduction, which reaches a series rather than a single payment.</div>';
+    if(c.id==="wd")h+='<div class="flag"><b>Two forums, two clocks.</b> In the tribunal, from the EDT and capped at £25,000. In the civil courts, six years — Limitation Act 1980 s.5.</div>';
+    if(x.unresolved)h+='<div class="flag red"><b>Unresolved — do not rely on this figure.</b> Breach of contract was left out of ERA 2025 Sch.12, so on one reading it stays at three months. A separate Extension of Jurisdiction order appears to extend it in England &amp; Wales. This engine applies three months as the safer assumption and flags it rather than choosing.</div>';
+    h+='</div>';
+    return h;
+  }).join("");
+
+  var s=parse(S.start),e=parse(S.edt);
+  if(s&&e&&S.selected.indexOf("ud")>-1){
+    var threshold=e>=parse("2027-01-01")?6:24, served=monthsBetween(s,e);
+    var pass=served>=threshold, near=served>=threshold-1&&served<threshold;
+    var q='<div class="result"><div class="rtop"><div><div class="cname">Qualifying service</div><div class="src">Unfair dismissal gate · ERA 1996 s.108</div></div>'+
+      '<div><div class="date">'+served+' months</div><div class="status '+(pass?"in":"out")+'">'+(pass?"meets "+threshold+" months":"short of "+threshold+" months")+'</div></div></div>';
+    if(threshold===24)q+='<div class="flag">Two years applies because the EDT falls before 1 January 2027. From that date the threshold drops to six months, with no transitional provision.</div>';
+    if(near)q+='<div class="flag"><b>Near miss — check statutory notice.</b> Where notice was not given, the EDT is extended by the statutory minimum notice for qualifying purposes (ERA s.97(2)). That can carry a claimant over the threshold.</div>';
+    el.innerHTML+=q+'</div>';
+  }
+}
+
+function renderTests(){
+  document.getElementById("tests").innerHTML=TESTS.map(function(t,i){
+    var g=calc(parse(t.t),t.m,parse(t.a),parse(t.b));
+    var ok=iso(g.final)===t.exp&&(!t.limb||g.limb===t.limb);
+    return '<div class="step'+(ok?" applied":"")+'" style="padding:6px 0;'+(i?"border-top:1px solid var(--rule)":"")+'">'+
+      '<span style="color:'+(ok?"var(--live)":"var(--expired)")+'">'+(ok?"PASS":"FAIL")+' · '+esc(t.n)+'</span>'+
+      '<span>'+fmt(g.final)+' · '+g.limb+'</span></div>';
+  }).join("");
+}
+
+function render(){
+  renderChips();
+  var rows=compute();
+  renderRuler(rows);
+  renderResults(rows);
+}
+
+document.getElementById("chips").addEventListener("click",function(e){
+  var b=e.target.closest("button[data-id]");if(!b)return;
+  var id=b.getAttribute("data-id"),i=S.selected.indexOf(id);
+  if(i>-1)S.selected.splice(i,1);else S.selected.push(id);
+  render();
+});
+["edt","start","wages","holiday","regime"].forEach(function(id){
+  document.getElementById(id).addEventListener("input",function(e){S[id]=e.target.value;render();});
+});
+document.getElementById("mode").addEventListener("change",function(e){S.mode=e.target.value;renderAcas();render();});
+document.getElementById("acasFields").addEventListener("input",function(e){
+  if(e.target.id)S[e.target.id]=e.target.value;render();
+});
+
+renderAcas();renderTests();render();
+</script>
+</body>
+</html>
